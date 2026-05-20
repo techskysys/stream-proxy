@@ -10,13 +10,15 @@ dotenv.config();
 
 const host = process.env.HOST || "127.0.0.1";
 const port = process.env.PORT || 8080;
-const web_server_url = process.env.PUBLIC_URL || `http://${host}:${port}`;
+const web_server_url =
+  process.env.BASE_URL_DOMAIN || process.env.PUBLIC_URL || `http://${host}:${port}`;
 
 export default async function proxyM3U8(
   url,
   headers,
   res,
-  proxyPort = DEFAULT_PROXY_PORT
+  proxyPort = DEFAULT_PROXY_PORT,
+  baseUrl = web_server_url
 ) {
   try {
     const client = createProxyClient(proxyPort, {
@@ -58,7 +60,7 @@ export default async function proxyM3U8(
           const match = regex.exec(line);
           if (match) {
             const keyUrl = buildProxyRequestUrl({
-              baseUrl: web_server_url,
+              baseUrl,
               headers,
               path: "/ts-proxy",
               proxyPort,
@@ -74,7 +76,7 @@ export default async function proxyM3U8(
           if (match) {
             const absUrl = new URL(match[1], url).href;
             const audioUrl = buildProxyRequestUrl({
-              baseUrl: web_server_url,
+              baseUrl,
               headers,
               path: "/m3u8-proxy",
               proxyPort,
@@ -90,7 +92,7 @@ export default async function proxyM3U8(
           if (match) {
             const absUrl = new URL(match[1], url).href;
             const iframeUrl = buildProxyRequestUrl({
-              baseUrl: web_server_url,
+              baseUrl,
               headers,
               path: "/m3u8-proxy",
               proxyPort,
@@ -108,7 +110,7 @@ export default async function proxyM3U8(
         const isM3U8 = absUrl.includes(".m3u8");
         const path = isM3U8 ? "/m3u8-proxy" : "/ts-proxy";
         const proxyUrl = buildProxyRequestUrl({
-          baseUrl: web_server_url,
+          baseUrl,
           headers,
           path,
           proxyPort,

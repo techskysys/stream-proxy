@@ -10,6 +10,15 @@ import proxyM3U8 from "./proxyM3U8.js";
 import { proxyTs } from "./proxyTS.js";
 import { resolveProxyPort } from "../utils/proxyClient.js";
 
+const host = process.env.HOST || "127.0.0.1";
+const port = process.env.PORT || 8080;
+const web_server_url = process.env.PUBLIC_URL || `http://${host}:${port}`;
+const rewriteBaseUrl = process.env.BASE_URL_DOMAIN || web_server_url;
+
+function normalizeBaseUrl(baseUrl) {
+  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+}
+
 export default function getHandler(options, proxy) {
   const corsAnywhere = {
     handleInitialRequest: null,
@@ -119,7 +128,13 @@ export default function getHandler(options, proxy) {
         }
         const url = uri.searchParams.get("url");
         const proxyPort = resolveProxyPort(uri.searchParams.get("proxyPort"));
-        return proxyM3U8(url ?? "", headers, res, proxyPort);
+        return proxyM3U8(
+          url ?? "",
+          headers,
+          res,
+          proxyPort,
+          normalizeBaseUrl(rewriteBaseUrl)
+        );
       } else if (uri.pathname === "/ts-proxy") {
         let headers = {};
         try {
@@ -140,7 +155,6 @@ export default function getHandler(options, proxy) {
         return;
       }
     }
-
     if (!hasRequiredHeaders(req.headers)) {
       res.writeHead(400, "Header required", cors_headers);
       res.end(
@@ -201,11 +215,7 @@ export default function getHandler(options, proxy) {
       return;
     }
 
-    const isRequestedOverHttps =
-      req.connection.encrypted ||
-      /^\s*https/.test(req.headers["x-forwarded-proto"]);
-    const proxyBaseUrl =
-      (isRequestedOverHttps ? "https://" : "http://") + req.headers.host;
+    const proxyBaseUrl = normalizeBaseUrl(rewriteBaseUrl);
 
     corsAnywhere.removeHeaders.forEach(function (header) {
       delete req.headers[header];
