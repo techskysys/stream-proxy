@@ -1,5 +1,5 @@
+import axios from "axios";
 import dotenv from "dotenv";
-import { fetchWithProxy } from "../proxyClient.js";
 
 dotenv.config();
 
@@ -8,10 +8,7 @@ const port = process.env.PORT || 8080;
 const web_server_url = process.env.PUBLIC_URL || `http://${host}:${port}`;
 
 export default async function proxyM3U8(url, headers, res) {
-  const req = await fetchWithProxy(url, {
-    Referer: "https://megaplay.buzz/",
-    ...headers,
-  }).catch((err) => {
+  const req = await axios(url, { headers }).catch((err) => {
     res.writeHead(500);
     res.end(err.message);
     return null;
