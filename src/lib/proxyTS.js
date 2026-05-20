@@ -1,59 +1,71 @@
-import https from "node:https";
-import http from "node:http";
+import { text as streamToText } from "node:stream/consumers";
+import {
+  createProxyClient,
+  DEFAULT_PROXY_PORT,
+  writeProxyError,
+} from "../utils/proxyClient.js";
 
-export async function proxyTs(url, headers, req, res) {
-  let forceHTTPS = false;
-
-  if (url.startsWith("https://")) {
-    forceHTTPS = true;
-  }
-
-  const uri = new URL(url);
-  const options = {
-    hostname: uri.hostname,
-    port: uri.port,
-    path: uri.pathname + uri.search,
-    method: req.method,
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
-      ...headers,
-    },
-  };
+export async function proxyTs(
+  url,
+  headers,
+  req,
+  res,
+  proxyPort = DEFAULT_PROXY_PORT
+) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
   res.setHeader("Access-Control-Allow-Methods", "*");
 
   try {
-    if (forceHTTPS) {
-      const proxy = https.request(options, (r) => {
-        r.headers["content-type"] = "video/mp2t";
-        res.writeHead(r.statusCode ?? 200, r.headers);
+    const client = createProxyClient(proxyPort, {
+      responseType: "stream",
+      validateStatus: () => true,
+    });
 
-        r.pipe(res, {
-          end: true,
-        });
-      });
+    const upstream = await client.request({
+      data: ["GET", "HEAD"].includes(req.method ?? "GET") ? undefined : req,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
+        ...headers,
+      },
+      method: req.method ?? "GET",
+      url,
+    });
 
-      req.pipe(proxy, {
-        end: true,
+    if (upstream.status === 407) {
+      res.writeHead(407, {
+        "Content-Type": "text/plain; charset=utf-8",
       });
-    } else {
-      const proxy = http.request(options, (r) => {
-        r.headers["content-type"] = "video/mp2t";
-        res.writeHead(r.statusCode ?? 200, r.headers);
-
-        r.pipe(res, {
-          end: true,
-        });
-      });
-      req.pipe(proxy, {
-        end: true,
-      });
+      res.end(
+        "Proxy authentication required or the residential proxy rejected the credentials."
+      );
+      return;
     }
+
+    if (upstream.status >= 400) {
+      const errorBody = await streamToText(upstream.data).catch(() => "");
+      res.writeHead(upstream.status, {
+        "Content-Type": "text/plain; charset=utf-8",
+      });
+      res.end(
+        errorBody.trim()
+          ? errorBody
+          : `Upstream segment request failed with status ${upstream.status}.`
+      );
+      return;
+    }
+
+    res.writeHead(upstream.status ?? 200, {
+      ...upstream.headers,
+      "content-type": upstream.headers["content-type"] || "video/mp2t",
+    });
+
+    upstream.data.pipe(res, {
+      end: true,
+    });
   } catch (e) {
-    res.writeHead(500);
-    res.end(e.message);
+    writeProxyError(res, e, "Segment proxy failed");
     return null;
   }
 }

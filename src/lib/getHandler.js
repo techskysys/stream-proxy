@@ -8,6 +8,7 @@ import withCORS from "./withCORS.js";
 import parseURL from "./parseURL.js";
 import proxyM3U8 from "./proxyM3U8.js";
 import { proxyTs } from "./proxyTS.js";
+import { resolveProxyPort } from "../utils/proxyClient.js";
 
 export default function getHandler(options, proxy) {
   const corsAnywhere = {
@@ -117,7 +118,8 @@ export default function getHandler(options, proxy) {
           return;
         }
         const url = uri.searchParams.get("url");
-        return proxyM3U8(url ?? "", headers, res);
+        const proxyPort = resolveProxyPort(uri.searchParams.get("proxyPort"));
+        return proxyM3U8(url ?? "", headers, res, proxyPort);
       } else if (uri.pathname === "/ts-proxy") {
         let headers = {};
         try {
@@ -128,7 +130,8 @@ export default function getHandler(options, proxy) {
           return;
         }
         const url = uri.searchParams.get("url");
-        return proxyTs(url ?? "", headers, req, res);
+        const proxyPort = resolveProxyPort(uri.searchParams.get("proxyPort"));
+        return proxyTs(url ?? "", headers, req, res, proxyPort);
       } else if (uri.pathname === "/") {
         return res.end(readFileSync(join(__dirname, "../index.html")));
       } else {
