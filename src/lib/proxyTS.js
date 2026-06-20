@@ -1,4 +1,3 @@
-import colors from "colors";
 import { text as streamToText } from "node:stream/consumers";
 import {
   createProxyClient,
@@ -14,15 +13,6 @@ export async function proxyTs(
   proxyPort
 ) {
   const resolvedPort = proxyPort ?? getRandomProxyPort();
-
-  const fileName = url.split("/").pop()?.split("?")[0] || url;
-  const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-  console.log(
-    colors.gray(`[${time}]`) +
-      colors.cyan(" [ ts ]") +
-      colors.yellow(` port ${resolvedPort}`) +
-      colors.white(` → ${fileName}`)
-  );
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
