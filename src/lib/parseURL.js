@@ -1,5 +1,3 @@
-import url from "node:url";
-
 export default function parseURL(req_url) {
   const match = req_url.match(
     /^(?:(https?:)?\/\/)?(([^\/?]+?)(?::(\d{0,5})(?=[\/?]|$))?)([\/?][\S\s]*|$)/i
@@ -16,9 +14,13 @@ export default function parseURL(req_url) {
     }
     req_url = (match[4] === "443" ? "https:" : "http:") + req_url;
   }
-  const parsed = url.parse(req_url);
-  if (!parsed.hostname) {
+  try {
+    const parsed = new URL(req_url);
+    if (!parsed.hostname) {
+      return null;
+    }
+    return parsed;
+  } catch {
     return null;
   }
-  return parsed;
 }

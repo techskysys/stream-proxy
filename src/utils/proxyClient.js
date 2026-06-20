@@ -3,6 +3,44 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 
 export const DEFAULT_PROXY_PORT = 10001;
 
+/**
+ * Comma-separated list of proxy ports to rotate through.
+ * Set via PROXY_PORTS env var, e.g. PROXY_PORTS=10001,10002,10003
+ *
+ * Lazily parsed at first call so dotenv has time to load.
+ */
+let _proxyPorts = null;
+function getProxyPorts() {
+  if (_proxyPorts) return _proxyPorts;
+  _proxyPorts = (process.env.PROXY_PORTS || String(DEFAULT_PROXY_PORT))
+    .split(",")
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+  if (_proxyPorts.length === 0) {
+    _proxyPorts = [DEFAULT_PROXY_PORT];
+  }
+  return _proxyPorts;
+}
+
+/**
+ * Returns a random proxy port from the configured PROXY_PORTS list.
+ */
+export function getRandomProxyPort() {
+  const ports = getProxyPorts();
+  return ports[Math.floor(Math.random() * ports.length)];
+}
+
+/**
+ * Rotates through proxy ports round-robin across requests.
+ */
+let _roundRobinIndex = 0;
+export function getNextProxyPort() {
+  const ports = getProxyPorts();
+  const port = ports[_roundRobinIndex % ports.length];
+  _roundRobinIndex++;
+  return port;
+}
+
 export function resolveProxyPort(port = process.env.PROXY_PORT ?? DEFAULT_PROXY_PORT) {
   const parsedPort = Number(port);
   return Number.isInteger(parsedPort) && parsedPort > 0
@@ -35,6 +73,7 @@ export function getProxyConfig(port = DEFAULT_PROXY_PORT) {
     password
   )}@${host}:${resolvedPort}`;
 
+  
   return {
     host,
     password,

@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
+import colors from "colors";
 import {
   buildProxyRequestUrl,
   createProxyClient,
-  DEFAULT_PROXY_PORT,
+  getRandomProxyPort,
   writeProxyError,
 } from "../utils/proxyClient.js";
 
@@ -17,11 +18,22 @@ export default async function proxyM3U8(
   url,
   headers,
   res,
-  proxyPort = DEFAULT_PROXY_PORT,
+  proxyPort,
   baseUrl = web_server_url
 ) {
+  const resolvedPort = proxyPort ?? getRandomProxyPort();
+
+  const fileName = url.split("/").pop()?.split("?")[0] || url;
+  const time = new Date().toLocaleTimeString("en-US", { hour12: false });
+  console.log(
+    colors.gray(`[${time}]`) +
+      colors.cyan(" [m3u8]") +
+      colors.yellow(` port ${resolvedPort}`) +
+      colors.white(` → ${fileName}`)
+  );
+
   try {
-    const client = createProxyClient(proxyPort, {
+    const client = createProxyClient(resolvedPort, {
       responseType: "text",
       validateStatus: () => true,
     });
@@ -63,7 +75,7 @@ export default async function proxyM3U8(
               baseUrl,
               headers,
               path: "/ts-proxy",
-              proxyPort,
+              proxyPort: resolvedPort,
               targetUrl: match[0],
             });
             newLines.push(line.replace(match[0], keyUrl));
@@ -79,7 +91,7 @@ export default async function proxyM3U8(
               baseUrl,
               headers,
               path: "/m3u8-proxy",
-              proxyPort,
+              proxyPort: resolvedPort,
               targetUrl: absUrl,
             });
             newLines.push(line.replace(match[1], audioUrl));
@@ -95,7 +107,7 @@ export default async function proxyM3U8(
               baseUrl,
               headers,
               path: "/m3u8-proxy",
-              proxyPort,
+              proxyPort: resolvedPort,
               targetUrl: absUrl,
             });
             newLines.push(line.replace(match[1], iframeUrl));
@@ -113,7 +125,7 @@ export default async function proxyM3U8(
           baseUrl,
           headers,
           path,
-          proxyPort,
+          proxyPort: resolvedPort,
           targetUrl: absUrl,
         });
         newLines.push(proxyUrl);

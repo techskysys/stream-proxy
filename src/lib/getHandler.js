@@ -127,7 +127,8 @@ export default function getHandler(options, proxy) {
           return;
         }
         const url = uri.searchParams.get("url");
-        const proxyPort = resolveProxyPort(uri.searchParams.get("proxyPort"));
+        const rawPort = uri.searchParams.get("proxyPort");
+        const proxyPort = rawPort ? resolveProxyPort(rawPort) : undefined;
         return proxyM3U8(
           url ?? "",
           headers,
@@ -145,7 +146,8 @@ export default function getHandler(options, proxy) {
           return;
         }
         const url = uri.searchParams.get("url");
-        const proxyPort = resolveProxyPort(uri.searchParams.get("proxyPort"));
+        const rawPort = uri.searchParams.get("proxyPort");
+        const proxyPort = rawPort ? resolveProxyPort(rawPort) : undefined;
         return proxyTs(url ?? "", headers, req, res, proxyPort);
       } else if (uri.pathname === "/") {
         return res.end(readFileSync(join(__dirname, "../index.html")));
